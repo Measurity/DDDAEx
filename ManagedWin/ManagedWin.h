@@ -5,6 +5,8 @@
 #include "windows.h"
 #undef CreateProcess
 #undef GetModuleHandle
+#include <Psapi.h>
+#include <comdef.h>
 
 using namespace System;
 using namespace System::Runtime::InteropServices;
@@ -74,8 +76,10 @@ namespace ManagedWin {
 		static bool Free(System::IntPtr process, System::IntPtr address, unsigned long size, FreeType freeType);
 		static void CloseHandle(System::IntPtr handle);
 
+		static System::IntPtr GetProcessModuleHandle(System::IntPtr process, System::String^ module);
+
 		// Direct memory access.
 		static uint32_t WriteString(System::IntPtr handle, System::IntPtr address, System::String^ value);
-		static int ReadInt(System::IntPtr handle, System::IntPtr address);
+		static uint32_t ReadInt(System::IntPtr handle, System::IntPtr address);
 	};
 }

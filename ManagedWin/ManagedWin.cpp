@@ -66,6 +66,39 @@ bool ManagedWin::Win32Process::Free(System::IntPtr process, System::IntPtr addre
 	return ::VirtualFreeEx(static_cast<HANDLE>(process), static_cast<LPVOID>(address), size, static_cast<DWORD>(freeType)) != NULL;
 }
 
+void ManagedWin::Win32Process::CloseHandle(System::IntPtr handle)
+{
+	::CloseHandle(static_cast<HANDLE>(handle));
+}
+
+System::IntPtr ManagedWin::Win32Process::GetProcessModuleHandle(System::IntPtr process, System::String^ module)
+{
+	throw gcnew NotImplementedException();
+	const char* buffer = (const char*)(Marshal::StringToHGlobalAnsi(module)).ToPointer();
+	HMODULE hMods[1024];
+	HANDLE hProcess = static_cast<HANDLE>(process);
+	DWORD cbNeeded;
+
+	if (::EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded))
+	{
+		for (uint16_t i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+		{
+			TCHAR szModName[MAX_PATH];
+			if (::GetModuleFileNameEx(hProcess, hMods[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
+			{
+				// TODO: Fix compare.. (aka. proper cast to right types)
+				_bstr_t comp(szModName);
+				if (strcmp(comp, buffer) == 0)
+				{
+					return static_cast<System::IntPtr>(hMods[i]);
+				}
+			}
+		}
+	}
+
+	return IntPtr::Zero;
+}
+
 uint32_t ManagedWin::Win32Process::WriteString(System::IntPtr handle, System::IntPtr address, System::String^ value)
 {
 	const char* buffer = (const char*)(Marshal::StringToHGlobalAnsi(value)).ToPointer();
@@ -74,14 +107,9 @@ uint32_t ManagedWin::Win32Process::WriteString(System::IntPtr handle, System::In
 	return bytesWritten;
 }
 
-void ManagedWin::Win32Process::CloseHandle(System::IntPtr handle)
+uint32_t ManagedWin::Win32Process::ReadInt(System::IntPtr handle, System::IntPtr address)
 {
-	::CloseHandle(static_cast<HANDLE>(handle));
-}
-
-int32_t ManagedWin::Win32Process::ReadInt(System::IntPtr handle, System::IntPtr address)
-{
-	int32_t value;
+	uint32_t value;
 	::ReadProcessMemory(static_cast<HANDLE>(handle), static_cast<LPCVOID>(address), &value, sizeof(value), NULL);
 	return value;
 }
