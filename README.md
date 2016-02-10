@@ -40,3 +40,6 @@ Classes for: Drawing hooks and Logic hooks.
 - Use minimal data per message (auto increment message id per registered message).
 - Force mods to use type-based equality checking for messages (never on IDs!).
 - Allow mods to register their own messages through MEF 2.
+- Allow mods to bind logic for messages.
+-- OnIncomming: Write changes to memory locations.
+-- OnOutgoing: Read changes to memory and send to server/client.
