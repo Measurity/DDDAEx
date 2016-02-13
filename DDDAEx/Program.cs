@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ManagedWin;
@@ -12,28 +13,39 @@ namespace DDDAEx
 {
     static class Program
     {
-        const string DllPath = @"DDDAExHoster.dll";
+        const string LocalHosterPath = @"DDDAExHoster.dll";
 
         static void Main()
         {
-            IntPtr handle = IntPtr.Zero;
+            IntPtr procHandle = IntPtr.Zero;
+            IntPtr procThreadHandle = IntPtr.Zero;
             IntPtr alloc = IntPtr.Zero;
             try
             {
-                // Write dll path in process.
-                handle = Win32Process.OpenProcess(ProcessAccess.Inject,
-                    Process.GetProcessesByName("sublime_text")[0].Id);
-                alloc = Win32Process.Alloc(handle, IntPtr.Zero, DllPath.Length,
-                    AllocationType.MemReserve | AllocationType.MemCommit, ProtectType.ReadWrite);
-                Win32Process.WriteString(handle, alloc, Path.GetFullPath(DllPath));
+                // Get process handle.
+                var handles = DDDAExUtil.LaunchGame(ProcessCreationType.CreateSuspended);
+                procHandle = handles.Item1;
+                procThreadHandle = handles.Item2;
 
-                // Load library in target process.
+                // Copy LoadLibraryA function to target process.
                 IntPtr loadLibFunc = Win32Process.GetProcAddress(Win32Process.GetModuleHandle("kernel32.dll"),
                     "LoadLibraryA");
-                IntPtr loadLibThread = Win32Process.Execute(handle, loadLibFunc, alloc);
+                IntPtr allocLoadLib = Win32Process.Alloc(procHandle, IntPtr.Zero, 200,
+                    AllocationType.MemReserve | AllocationType.MemCommit, ProtectType.ReadWrite);
+                Win32Process.CopyMemoryRemote(Process.GetCurrentProcess().Handle, loadLibFunc, 200, procHandle,
+                    allocLoadLib);
+
+                // Write dll path in process.
+                var fullPath = Path.GetFullPath(LocalHosterPath);
+                alloc = Win32Process.Alloc(procHandle, IntPtr.Zero, fullPath.Length,
+                    AllocationType.MemReserve | AllocationType.MemCommit, ProtectType.ReadWrite);
+                Win32Process.WriteString(procHandle, alloc, fullPath);
+
+                // Load library in target process.
+                IntPtr loadLibThread = Win32Process.Execute(procHandle, loadLibFunc, alloc);
 
                 // Load library in current process (to retrieve function pointer offset).
-                var currentDll = Win32Process.Load(DllPath);
+                var currentDll = Win32Process.Load(LocalHosterPath);
                 var clrFuncOffset = IntPtr.Subtract(Win32Process.GetProcAddress(currentDll, "ExecuteCLR"),
                     currentDll.ToInt32());
 
@@ -41,14 +53,18 @@ namespace DDDAEx
                 Win32Process.WaitInfinite(loadLibThread);
                 IntPtr targetLibBase = Win32Process.GetExitCodeThread(loadLibThread);
 
+                // Resume game.
+                Win32Process.ResumeThread(procThreadHandle);
+
                 var remoteExecClrPtr = IntPtr.Add(targetLibBase, clrFuncOffset.ToInt32());
-                Win32Process.Execute(handle, remoteExecClrPtr, IntPtr.Zero);
+                Win32Process.Execute(procHandle, remoteExecClrPtr, IntPtr.Zero);
             }
             finally
             {
                 // Release resources.
-                Win32Process.Free(handle, alloc);
-                Win32Process.CloseHandle(handle);
+                Win32Process.Free(procHandle, alloc);
+                Win32Process.CloseHandle(procThreadHandle);
+                Win32Process.CloseHandle(procHandle);
             }
         }
 

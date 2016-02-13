@@ -11,6 +11,36 @@ System::IntPtr ManagedWin::Win32Process::OpenProcess(ProcessAccess access, int p
 	return static_cast<System::IntPtr>(::OpenProcess(static_cast<DWORD>(access), FALSE, static_cast<DWORD>(pid)));
 }
 
+System::Tuple<IntPtr, IntPtr>^ ManagedWin::Win32Process::CreateProcess(System::String^ file, ProcessCreationType type)
+{
+	pin_ptr<const wchar_t> wFile = PtrToStringChars(file);
+
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+
+	::ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+	::ZeroMemory(&pi, sizeof(pi));
+	CreateProcessW(wFile, NULL, NULL, NULL, FALSE, static_cast<DWORD>(type), NULL, NULL, &si, &pi);
+
+	return gcnew System::Tuple<IntPtr, IntPtr>(static_cast<System::IntPtr>(pi.hProcess), static_cast<System::IntPtr>(pi.hThread));
+}
+
+System::Tuple<IntPtr, IntPtr>^ ManagedWin::Win32Process::CreateProcess(System::String^ file)
+{
+	return ManagedWin::Win32Process::CreateProcess(file, ProcessCreationType::Default);
+}
+
+void ManagedWin::Win32Process::SuspendThread(System::IntPtr thread)
+{
+	::SuspendThread(static_cast<HANDLE>(thread));
+}
+
+void ManagedWin::Win32Process::ResumeThread(System::IntPtr thread)
+{
+	::ResumeThread(static_cast<HANDLE>(thread));
+}
+
 System::IntPtr ManagedWin::Win32Process::GetModuleHandle(System::String^ moduleName)
 {
 	pin_ptr<const wchar_t> wModuleName = PtrToStringChars(moduleName);
@@ -104,6 +134,16 @@ uint32_t ManagedWin::Win32Process::WriteString(System::IntPtr handle, System::In
 	const char* buffer = (const char*)(Marshal::StringToHGlobalAnsi(value)).ToPointer();
 	SIZE_T bytesWritten = 0;
 	::WriteProcessMemory(static_cast<HANDLE>(handle), static_cast<LPVOID>(address), buffer, strlen(buffer), &bytesWritten);
+	return bytesWritten;
+}
+
+uint32_t ManagedWin::Win32Process::CopyMemoryRemote(System::IntPtr fromHandle, System::IntPtr address, const int length, System::IntPtr toHandle, System::IntPtr remoteAddress)
+{
+	uint8_t* buffer = new uint8_t[length];
+	ReadProcessMemory(static_cast<HANDLE>(fromHandle), static_cast<LPVOID>(address), buffer, length, NULL);
+
+	SIZE_T bytesWritten;
+	WriteProcessMemory(static_cast<HANDLE>(toHandle), static_cast<LPVOID>(remoteAddress), buffer, length, &bytesWritten);
 	return bytesWritten;
 }
 

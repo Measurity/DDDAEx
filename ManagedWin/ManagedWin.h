@@ -59,11 +59,32 @@ namespace ManagedWin {
 		Failed = 0xFFFFFFFF,
 	};
 
+	[FlagsAttribute]
+	public enum class ProcessCreationType : unsigned int
+	{
+		Default = 0,
+		DebugProcess = 0x00000001,
+		DebugOnlyThisProcess = 0x00000002,
+		CreateSuspended = 0x00000004,
+		DetachedProcess = 0x00000008,
+		CreateNewConsole = 0x00000010,
+		CreateNewProcessGroup = 0x00000200,
+		CreateUnicodeEnvironment = 0x00000400,
+		InheritParentAffinity = 0x00010000,
+		ExtendedStartupInfoPresent = 0x00080000,
+		CreateNoWindow = 0x08000000,
+		CreateProtectedProcess = 0x00040000,
+	};
+
 	public ref class Win32Process
 	{
 	public:
 		// Process management.
 		static System::IntPtr OpenProcess(ProcessAccess access, int pid);
+		static System::Tuple<IntPtr, IntPtr>^ CreateProcess(System::String^ file);
+		static System::Tuple<IntPtr, IntPtr>^ CreateProcess(System::String^ file, ProcessCreationType type);
+		static void SuspendThread(System::IntPtr thread);
+		static void ResumeThread(System::IntPtr thread);
 		static System::IntPtr GetModuleHandle(System::String^ moduleName);
 		static System::IntPtr GetProcAddress(System::IntPtr module, System::String^ functionName);
 		static System::IntPtr Execute(System::IntPtr handle, System::IntPtr entryAddress, System::IntPtr argumentAddress);
@@ -80,6 +101,7 @@ namespace ManagedWin {
 
 		// Direct memory access.
 		static uint32_t WriteString(System::IntPtr handle, System::IntPtr address, System::String^ value);
+		static uint32_t CopyMemoryRemote(System::IntPtr fromHandle, System::IntPtr address, int length, System::IntPtr toHandle, System::IntPtr remoteAddress);
 		static uint32_t ReadInt(System::IntPtr handle, System::IntPtr address);
 	};
 }
