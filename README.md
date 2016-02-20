@@ -8,7 +8,7 @@ Targets for this project, followed by todo's.
 ###Injecting
 **Status**: In progress  
 **Tasks**
-- [ ] Use CreateProcess or OpenProcess WinAPI depending on if the game is already running.
+- [ ] Use CreateProcess with Suspended to load CLR ASAP.
 - [ ] Error/sanity checking.
   - [ ] CLR not installed.
   - [ ] Not enough access rights to inject.
