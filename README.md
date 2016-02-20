@@ -6,7 +6,7 @@ A mod project for Capcom's game - Dragon's Dogma: Dark Arisen
 Targets for this project, followed by todo's.
 
 ###Injecting
-**Status**: In progress  
+**Status**: In progress (Low priority)  
 **Tasks**
 - [x] Use CreateProcess with Suspended to load CLR ASAP.
 - [ ] Error/sanity checking.
@@ -24,7 +24,7 @@ Targets for this project, followed by todo's.
 - CreateRemoteThread on ExecuteCLR function in injected DLL.
 
 ###Hooking
-**Status**: Todo  
+**Status**: In progress (High priority)  
 **Tasks**  
 - [ ] Inject DirectX's interface and bind it to the SharpDX framework (take a look at EasyHook).
   - [ ] Hooking EndDraw scene.
