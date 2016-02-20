@@ -96,12 +96,17 @@ namespace ManagedWin {
 		static bool Free(System::IntPtr process, System::IntPtr address);
 		static bool Free(System::IntPtr process, System::IntPtr address, unsigned long size, FreeType freeType);
 		static void CloseHandle(System::IntPtr handle);
-
+		static uint32_t GetModuleSize(System::IntPtr handle, System::IntPtr module);
+		static System::IntPtr GetModuleEntry(System::IntPtr handle, System::IntPtr module);
 		static System::IntPtr GetProcessModuleHandle(System::IntPtr process, System::String^ module);
+		static int32_t GetProcessId(System::IntPtr handle);
+		static System::IntPtr GetThreadInstruction(System::IntPtr handle);
 
 		// Direct memory access.
 		static uint32_t WriteString(System::IntPtr handle, System::IntPtr address, System::String^ value);
-		static uint32_t CopyMemoryRemote(System::IntPtr fromHandle, System::IntPtr address, int length, System::IntPtr toHandle, System::IntPtr remoteAddress);
+		static uint32_t CopyMemoryRemote(System::IntPtr fromHandle, System::IntPtr address, uint32_t length, System::IntPtr toHandle, System::IntPtr remoteAddress);
 		static uint32_t ReadInt(System::IntPtr handle, System::IntPtr address);
+		static array<Byte>^ ReadBytes(System::IntPtr process, System::IntPtr base, int32_t length);
+		static void WriteBytes(System::IntPtr process, System::IntPtr base, array<Byte>^ bytes);
 	};
 }

@@ -101,6 +101,32 @@ void ManagedWin::Win32Process::CloseHandle(System::IntPtr handle)
 	::CloseHandle(static_cast<HANDLE>(handle));
 }
 
+int32_t ManagedWin::Win32Process::GetProcessId(System::IntPtr handle)
+{
+	return ::GetProcessId(static_cast<HANDLE>(handle));
+}
+
+System::IntPtr ManagedWin::Win32Process::GetThreadInstruction(System::IntPtr handle)
+{
+	CONTEXT con;
+	::GetThreadContext(static_cast<HANDLE>(handle), &con);
+	return static_cast<System::IntPtr>((long long)con.Eip);
+}
+
+uint32_t ManagedWin::Win32Process::GetModuleSize(System::IntPtr handle, System::IntPtr module)
+{
+	MODULEINFO mi;
+	::GetModuleInformation(static_cast<HANDLE>(handle), static_cast<HMODULE>(static_cast<HANDLE>(module)), &mi, sizeof(mi));
+	return mi.SizeOfImage;
+}
+
+System::IntPtr ManagedWin::Win32Process::GetModuleEntry(System::IntPtr handle, System::IntPtr module)
+{
+	MODULEINFO mi;
+	::GetModuleInformation(static_cast<HANDLE>(handle), static_cast<HMODULE>(static_cast<HANDLE>(module)), &mi, sizeof(mi));
+	return static_cast<System::IntPtr>(mi.EntryPoint);
+}
+
 System::IntPtr ManagedWin::Win32Process::GetProcessModuleHandle(System::IntPtr process, System::String^ module)
 {
 	throw gcnew NotImplementedException();
@@ -137,7 +163,7 @@ uint32_t ManagedWin::Win32Process::WriteString(System::IntPtr handle, System::In
 	return bytesWritten;
 }
 
-uint32_t ManagedWin::Win32Process::CopyMemoryRemote(System::IntPtr fromHandle, System::IntPtr address, const int length, System::IntPtr toHandle, System::IntPtr remoteAddress)
+uint32_t ManagedWin::Win32Process::CopyMemoryRemote(System::IntPtr fromHandle, System::IntPtr address, const uint32_t length, System::IntPtr toHandle, System::IntPtr remoteAddress)
 {
 	uint8_t* buffer = new uint8_t[length];
 	ReadProcessMemory(static_cast<HANDLE>(fromHandle), static_cast<LPVOID>(address), buffer, length, NULL);
@@ -145,6 +171,25 @@ uint32_t ManagedWin::Win32Process::CopyMemoryRemote(System::IntPtr fromHandle, S
 	SIZE_T bytesWritten;
 	WriteProcessMemory(static_cast<HANDLE>(toHandle), static_cast<LPVOID>(remoteAddress), buffer, length, &bytesWritten);
 	return bytesWritten;
+}
+
+array<Byte>^ ManagedWin::Win32Process::ReadBytes(System::IntPtr process, System::IntPtr base, int32_t length)
+{
+	uint8_t* buffer = new uint8_t[length];
+	ReadProcessMemory(static_cast<HANDLE>(process), static_cast<LPVOID>(base), buffer, length, NULL);
+
+	array<Byte>^ result = gcnew array<Byte>(length);
+	pin_ptr<Byte> result_start = &result[0];
+	memcpy(result_start, buffer, length);
+
+	return result;
+}
+
+void ManagedWin::Win32Process::WriteBytes(System::IntPtr process, System::IntPtr base, array<Byte>^ bytes)
+{
+	pin_ptr<unsigned char> arr = &bytes[0];
+	WriteProcessMemory(static_cast<HANDLE>(process), static_cast<LPVOID>(base), arr, bytes->Length, NULL);
+
 }
 
 uint32_t ManagedWin::Win32Process::ReadInt(System::IntPtr handle, System::IntPtr address)
