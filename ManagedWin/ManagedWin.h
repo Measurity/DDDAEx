@@ -23,7 +23,28 @@ namespace ManagedWin {
 		Information = 0x0400,
 		SuspendResume = 0x0800,
 		Inject = Operation | Read | Write | CreateThread | Information,
-		All = 0x001F0FFF
+		All = 0x001F0FFF,
+	};
+
+	[FlagsAttribute]
+	public enum class ThreadAccess : unsigned int
+	{
+		Delete = 0x00010000L,
+		ReadControl = 0x00020000L,
+		Synchronize = 0x00100000L,
+		WriteDac = 0x00040000L,
+		WriteOwner = 0x00080000L,
+		AllAccess = 0x00100000L,
+		GetContext = 0x0008,
+		SetContext = 0x0010,
+		Impersonate = 0x0100,
+		QueryInformation = 0x0100,
+		QueryLimitedInformation = 0x0800,
+		SetInformation = 0x0020,
+		SetLimitedInformation = 0x0400,
+		SetThreadToken = 0x0080,
+		SuspendResume = 0x0002,
+		Terminate = 0x0001,
 	};
 
 	[FlagsAttribute]
@@ -41,14 +62,14 @@ namespace ManagedWin {
 		NoAccess = 0x01,
 		ReadOnly = 0x02,
 		ReadWrite = 0x04,
-		WriteCopy = 0x08
+		WriteCopy = 0x08,
 	};
 
 	[FlagsAttribute]
 	public enum class FreeType : unsigned int
 	{
 		MemDecommit = 0x4000,
-		MemRelease = 0x8000
+		MemRelease = 0x8000,
 	};
 
 	public enum class WaitForType : unsigned int
@@ -81,6 +102,7 @@ namespace ManagedWin {
 	public:
 		// Process management.
 		static System::IntPtr OpenProcess(ProcessAccess access, int pid);
+		static System::IntPtr OpenThread(ThreadAccess access, int tid);
 		static System::Tuple<IntPtr, IntPtr>^ CreateProcess(System::String^ file);
 		static System::Tuple<IntPtr, IntPtr>^ CreateProcess(System::String^ file, ProcessCreationType type);
 		static void SuspendThread(System::IntPtr thread);

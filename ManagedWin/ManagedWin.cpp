@@ -8,7 +8,12 @@
 
 System::IntPtr ManagedWin::Win32Process::OpenProcess(ProcessAccess access, int pid)
 {
-	return static_cast<System::IntPtr>(::OpenProcess(static_cast<DWORD>(access), FALSE, static_cast<DWORD>(pid)));
+	return static_cast<System::IntPtr>(::OpenProcess(static_cast<DWORD>(access), FALSE, pid));
+}
+
+System::IntPtr ManagedWin::Win32Process::OpenThread(ThreadAccess access, int tid)
+{
+	return static_cast<System::IntPtr>(::OpenThread(static_cast<DWORD>(access), FALSE, tid));
 }
 
 System::Tuple<IntPtr, IntPtr>^ ManagedWin::Win32Process::CreateProcess(System::String^ file, ProcessCreationType type)

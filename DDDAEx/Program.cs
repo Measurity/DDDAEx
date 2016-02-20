@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using DDDAEx.Net;
 using DDDAEx.Net.Packets;
@@ -16,15 +17,7 @@ namespace DDDAEx
 
         private static void Main()
         {
-            var peer = Peer.Create();
-            var peer2 = Peer.Create(0);
-
-            peer2.Connect("localhost", 8080);
-            peer2.TransmitAll(new ChatPacket("Hallo wereld ;D"));
-
-            Thread.Sleep(60000);
-
-            //Inject();
+            Inject();
         }
 
         private static void Inject()
@@ -38,6 +31,40 @@ namespace DDDAEx
                 var handles = DDDAExUtil.LaunchGame(ProcessCreationType.CreateSuspended);
                 procHandle = handles.Item1;
                 procThreadHandle = handles.Item2;
+
+                // Wait for initial process to finish and boot up next one.
+                Win32Process.ResumeThread(procThreadHandle);
+                Win32Process.CloseHandle(procThreadHandle);
+                Win32Process.WaitInfinite(procHandle);
+
+                // Capture game process.
+                Process process;
+                do
+                {
+                    process = Process.GetProcessesByName("DDDA").FirstOrDefault();
+                    Task.Delay(10).Wait();
+                } while (process == null);
+                procHandle = Win32Process.OpenProcess(ProcessAccess.All, process.Id);
+                
+                // Suspend process.
+                process.Threads.Cast<ProcessThread>().ToList().ForEach(t =>
+                {
+                    var threadH = Win32Process.OpenThread(ThreadAccess.SuspendResume, t.Id);
+                    Win32Process.SuspendThread(threadH);
+                });
+                procThreadHandle = Win32Process.OpenThread(ThreadAccess.AllAccess,
+                    process.Threads.Cast<ProcessThread>().OrderBy(t =>
+                    {
+                        try
+                        {
+                            return t.StartTime;
+                        }
+                        catch
+                        {
+                            // ignored
+                        }
+                        return DateTime.Now - TimeSpan.FromDays(1);
+                    }).First().Id);
 
                 var threadP = Win32Process.GetThreadInstruction(procThreadHandle);
                 
@@ -79,7 +106,18 @@ namespace DDDAEx
                 Win32Process.WaitInfinite(loadLibThread);
                 var targetLibBase = Win32Process.GetExitCodeThread(loadLibThread);
 
+                // Resume process.
+                process.Threads.Cast<ProcessThread>().ToList().ForEach(t =>
+                {
+                    var threadH = Win32Process.OpenThread(ThreadAccess.SuspendResume, t.Id);
+                    Win32Process.ResumeThread(threadH);
+                });
+
                 var remoteExecClrPtr = IntPtr.Add(targetLibBase, clrFuncOffset.ToInt32());
+
+                // Wait for the process to initalize a bit..
+                Task.Delay(1000).Wait();
+
                 Win32Process.Execute(procHandle, remoteExecClrPtr, IntPtr.Zero);
             }
             finally
