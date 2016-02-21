@@ -79,9 +79,14 @@ System::IntPtr ManagedWin::Win32Process::Load(System::String^ dll)
 	return static_cast<System::IntPtr>(LoadLibrary(wDll));
 }
 
-ManagedWin::WaitForType ManagedWin::Win32Process::WaitInfinite(System::IntPtr handle)
+ManagedWin::WaitForType ManagedWin::Win32Process::Wait(System::IntPtr handle)
 {
 	return static_cast<ManagedWin::WaitForType>(::WaitForSingleObject(static_cast<HANDLE>(handle), INFINITE));
+}
+
+ManagedWin::WaitForType ManagedWin::Win32Process::Wait(System::IntPtr handle, int ms)
+{
+	return static_cast<ManagedWin::WaitForType>(::WaitForSingleObject(static_cast<HANDLE>(handle), ms));
 }
 
 System::IntPtr ManagedWin::Win32Process::GetExitCodeThread(System::IntPtr threadHandle)

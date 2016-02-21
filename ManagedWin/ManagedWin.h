@@ -113,7 +113,8 @@ namespace ManagedWin {
 		static System::IntPtr Alloc(System::IntPtr process, System::IntPtr address, int size, AllocationType allocation, ProtectType protect);
 		static System::IntPtr Alloc(System::IntPtr process, System::IntPtr address, unsigned long size, AllocationType allocation, ProtectType protect);
 		static System::IntPtr Load(System::String^ dll);
-		static WaitForType WaitInfinite(System::IntPtr handle);
+		static WaitForType Wait(System::IntPtr handle);
+		static WaitForType Wait(System::IntPtr handle, int ms);
 		static System::IntPtr GetExitCodeThread(System::IntPtr handle);
 		static bool Free(System::IntPtr process, System::IntPtr address);
 		static bool Free(System::IntPtr process, System::IntPtr address, unsigned long size, FreeType freeType);
