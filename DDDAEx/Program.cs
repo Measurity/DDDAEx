@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using DDDAEx.Net;
 using DDDAEx.Net.Packets;
-using ManagedWin;
 using SharpDX;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D9;
 using SharpDX.Mathematics.Interop;
+using SharpUnmanaged;
 
 namespace DDDAEx
 {
@@ -26,21 +26,14 @@ namespace DDDAEx
 
         private static void Inject()
         {
-            var procHandle = IntPtr.Zero;
-            var procThreadHandle = IntPtr.Zero;
-            var alloc = IntPtr.Zero;
             try
             {
                 // Get process handle.
-                var handles = DDDAExUtil.LaunchGame(ProcessCreationType.CreateSuspended);
-                procHandle = handles.Item1;
-                procThreadHandle = handles.Item2;
-
-                // Wait for initial process to finish and boot up next one.
-                Win32Process.ResumeThread(procThreadHandle);
-                Win32Process.CloseHandle(procThreadHandle);
-                Debug.WriteLine("Waiting for Steam to launch DDDA..");
-                Win32Process.Wait(procHandle);
+                using (var proc = DDDAExUtil.LaunchGame())
+                {
+                    Debug.WriteLine("Waiting for Steam to launch DDDA..");
+                    proc.WaitForExit();
+                }
 
                 Debug.WriteLine("Attempting to capture DDDA process..");
                 // Capture game process.
@@ -50,8 +43,8 @@ namespace DDDAEx
                     process = Process.GetProcessesByName("DDDA").FirstOrDefault();
                     Task.Delay(10).Wait();
                 } while (process == null);
-                procHandle = Win32Process.OpenProcess(ProcessAccess.All, process.Id);
-                
+                procHandle = new Win32Process(process.Id, ProcessAccess.All);
+
                 Debug.WriteLine("Suspending DDDA process..");
                 // Suspend process.
                 process.Threads.Cast<ProcessThread>().ToList().ForEach(t =>
@@ -59,7 +52,7 @@ namespace DDDAEx
                     var threadH = Win32Process.OpenThread(ThreadAccess.SuspendResume, t.Id);
                     Win32Process.SuspendThread(threadH);
                 });
-                procThreadHandle = Win32Process.OpenThread(ThreadAccess.AllAccess,
+                procMainThread = Win32Process.OpenThread(ThreadAccess.AllAccess,
                     process.Threads.Cast<ProcessThread>().OrderBy(t =>
                     {
                         try
@@ -73,8 +66,8 @@ namespace DDDAEx
                         return DateTime.Now - TimeSpan.FromDays(1);
                     }).First().Id);
 
-                var threadP = Win32Process.GetThreadInstruction(procThreadHandle);
-                
+                var threadP = Win32Process.GetThreadInstruction(procMainThread);
+
                 Debug.WriteLine("Reading main thread bytes..");
                 // Copy first two bytes of thread entry.
                 byte[] threadPStart = Win32Process.ReadBytes(procHandle, threadP, 2);
@@ -85,16 +78,16 @@ namespace DDDAEx
 
                 Debug.WriteLine("Waiting for DLLs to load..");
                 // Resume and wait for kernel32 to load. Then pause.
-                Win32Process.ResumeThread(procThreadHandle);
+                Win32Process.ResumeThread(procMainThread);
                 var targetProc = Process.GetProcessById(Win32Process.GetProcessId(procHandle));
                 while (!targetProc.Modules.Cast<ProcessModule>().Any(m => m.ModuleName.IndexOf("kernel32", StringComparison.OrdinalIgnoreCase) >= 0))
                     Thread.Sleep(10);
-                Win32Process.SuspendThread(procThreadHandle);
+                Win32Process.SuspendThread(procMainThread);
 
                 Debug.WriteLine("Restoring original thread code..");
                 // Remove infinite loop from target process and resume game.
                 Win32Process.WriteBytes(procHandle, threadP, threadPStart);
-                Win32Process.ResumeThread(procThreadHandle);
+                Win32Process.ResumeThread(procMainThread);
 
                 Debug.WriteLine("Getting LoadLibraryW offset..");
                 // Get the LoadLibraryW function pointer from kernel32.dll.
@@ -109,16 +102,12 @@ namespace DDDAEx
 
                 Debug.WriteLine("Retrieve ExecuteCLR function offset..");
                 // Load library in current process (to retrieve function pointer offset).
-                var currentDll = Win32Process.Load(LocalHosterPath);
+                var currentDll = proc.Load(LocalHosterPath);
                 var clrFuncOffset = IntPtr.Subtract(Win32Process.GetProcAddress(currentDll, "ExecuteCLR"),
                     currentDll.ToInt32());
 
                 // Resume process (to make sure that LoadLibrary gets called and not dead-locking).
-                process.Threads.Cast<ProcessThread>().ToList().ForEach(t =>
-                {
-                    var threadH = Win32Process.OpenThread(ThreadAccess.SuspendResume, t.Id);
-                    Win32Process.ResumeThread(threadH);
-                });
+                process.Threads.Cast<ProcessThread>().ToList().ForEach(t => Win32Thread.Resume(t.Id));
 
                 // Load library in target process.
                 WaitForType waitResult;
@@ -126,7 +115,7 @@ namespace DDDAEx
                 do
                 {
                     Debug.WriteLine($"Loading CLR hoster into target.. procHandle:0x{procHandle.ToString("X2")}, loadLibFunc:0x{loadLibFunc.ToString("X2")}, alloc:0x{alloc.ToString("X2")}");
-                    var loadLibThread = Win32Process.Execute(procHandle, loadLibFunc, alloc);
+                    var loadLibThread = Win32Interop.CreateRemoteThread(procHandle, loadLibFunc, alloc);
 
                     Debug.WriteLine("Wait for dll to load in target process..");
                     waitResult = Win32Process.Wait(loadLibThread, 3 * 1000);
@@ -140,34 +129,36 @@ namespace DDDAEx
                 // Wait for the process to initalize a bit..
                 Task.Delay(1000).Wait();
 
-                Win32Process.Execute(procHandle, remoteExecClrPtr, IntPtr.Zero);
+                Win32Interop.CreateRemoteThread(procHandle, remoteExecClrPtr);
             }
             finally
             {
                 // Release resources.
-                Win32Process.Free(procHandle, alloc);
-                Win32Process.CloseHandle(procThreadHandle);
-                Win32Process.CloseHandle(procHandle);
+                //Win32Process.Free(procHandle, alloc);
+                //Win32Process.CloseHandle(procThreadHandle);
+                //Win32Process.CloseHandle(procHandle);
             }
         }
 
         private static int Init(string argument)
         {
-            PresentParameters parms = new PresentParameters();
-            parms.Windowed = true;
-            parms.SwapEffect = SwapEffect.Discard;
-            parms.BackBufferFormat = Format.A8R8G8B8;
-            Device device = new Device(new Direct3D(), 0, DeviceType.Hardware, Process.GetCurrentProcess().MainWindowHandle, CreateFlags.HardwareVertexProcessing, parms);
+            MessageBox.Show("C# injected :D");
 
-            Task.Factory.StartNew(() =>
-            {
-                while (true)
-                {
-                    device.ShowCursor = true;
-                    device.SetCursorPosition(0, 0, true);
-                    Task.Delay(1000).Wait();
-                }
-            }, TaskCreationOptions.LongRunning);
+            //PresentParameters parms = new PresentParameters();
+            //parms.Windowed = true;
+            //parms.SwapEffect = SwapEffect.Discard;
+            //parms.BackBufferFormat = Format.A8R8G8B8;
+            //Device device = new Device(new Direct3D(), 0, DeviceType.Hardware, Process.GetCurrentProcess().MainWindowHandle, CreateFlags.HardwareVertexProcessing, parms);
+
+            //Task.Factory.StartNew(() =>
+            //{
+            //    while (true)
+            //    {
+            //        device.ShowCursor = true;
+            //        device.SetCursorPosition(0, 0, true);
+            //        Task.Delay(1000).Wait();
+            //    }
+            //}, TaskCreationOptions.LongRunning);
             return 0;
         }
     }
