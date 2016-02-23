@@ -120,9 +120,12 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ManagedWin\ManagedWin.vcxproj">
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SharpUnmanaged\ManagedWin.vcxproj">
       <Project>{836848a7-3313-4487-a8af-38eccf417d8c}</Project>
-      <Name>ManagedWin</Name>
+      <Name>SharpUnmanaged</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
