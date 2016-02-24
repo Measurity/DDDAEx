@@ -32,7 +32,7 @@ Win32Process::Win32Process(IntPtr handle)
 Win32Process::Win32Process(IntPtr handle, ProcessAccess access)
 {
 	if (handle == IntPtr::Zero) throw gcnew Exception("Could not open the process with all access rights. Make sure you're program is executing with sufficient rights.");
-	Id = this->GetProcessId(handle);
+	Id = ::GetProcessId(static_cast<HANDLE>(handle));
 	if (Id <= 0) throw gcnew Exception("Could not get process id from handle.");
 	Handle = handle;
 }
@@ -108,7 +108,7 @@ int32_t Win32Process::WriteBytes(System::IntPtr address, array<Byte>^ bytes)
 
 IEnumerable<Win32Thread^>^ Win32Process::Threads::get()
 {
-	List<Win32Thread^>^ result;
+	List<Win32Thread^>^ result = gcnew List<Win32Thread^>();
 	HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
 	if (h != INVALID_HANDLE_VALUE) {
 		THREADENTRY32 te;
@@ -122,9 +122,51 @@ IEnumerable<Win32Thread^>^ Win32Process::Threads::get()
 				te.dwSize = sizeof(te);
 			} while (Thread32Next(h, &te));
 		}
+		::CloseHandle(h);
 	}
-	::CloseHandle(h);
 	return result;
+}
+
+IEnumerable<Win32Module^>^ Win32Process::Modules::get()
+{
+	List<Win32Module^>^ result = gcnew List<Win32Module^>();
+	HANDLE hModuleSnap = INVALID_HANDLE_VALUE;
+	MODULEENTRY32 me32;
+
+	//  Take a snapshot of all modules in the specified process. 
+	hModuleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, this->Id);
+	if (hModuleSnap == INVALID_HANDLE_VALUE)
+	{
+		return result;
+	}
+
+	me32.dwSize = sizeof(MODULEENTRY32);
+
+	if (!Module32First(hModuleSnap, &me32))
+	{
+		::CloseHandle(hModuleSnap);
+		return result;
+	}
+
+	do
+	{
+		result->Add(gcnew Win32Module(this->Handle, static_cast<IntPtr>(me32.hModule)));
+	} while (Module32Next(hModuleSnap, &me32));
+
+	::CloseHandle(hModuleSnap);
+	return result;
+}
+
+void Win32Process::Suspend()
+{
+	for each (auto thread in Threads)
+		thread->Suspend();
+}
+
+void Win32Process::Resume()
+{
+	for each (auto thread in Threads)
+		thread->Resume();
 }
 
 #pragma endregion
@@ -141,9 +183,24 @@ IntPtr Win32Process::Load(System::String^ dll)
 	return static_cast<IntPtr>(LoadLibrary(wDll));
 }
 
+Win32Thread^ Win32Process::Execute(IntPtr address)
+{
+	return gcnew Win32Thread(Win32Interop::CreateRemoteThread(this->Handle, address));
+}
+
+Win32Thread^ Win32Process::Execute(IntPtr address, IntPtr argument)
+{
+	return gcnew Win32Thread(Win32Interop::CreateRemoteThread(this->Handle, address, argument));
+}
+
 WaitForType Win32Process::WaitForExit()
 {
 	return static_cast<WaitForType>(::WaitForSingleObject(static_cast<HANDLE>(Handle), INFINITE));
+}
+
+IntPtr Win32Process::Alloc(int32_t size, AllocationType allocation, ProtectType protect)
+{
+	return static_cast<IntPtr>(::VirtualAlloc(NULL, size, static_cast<DWORD>(allocation), static_cast<DWORD>(protect)));
 }
 
 bool Win32Process::Free(IntPtr address)
@@ -154,18 +211,6 @@ bool Win32Process::Free(IntPtr address)
 void SharpUnmanaged::Win32Process::CloseHandle(System::IntPtr handle)
 {
 	::CloseHandle(static_cast<HANDLE>(handle));
-}
-
-int32_t SharpUnmanaged::Win32Process::GetProcessId(System::IntPtr handle)
-{
-	return ::GetProcessId(static_cast<HANDLE>(handle));
-}
-
-System::IntPtr SharpUnmanaged::Win32Process::GetThreadInstruction(System::IntPtr handle)
-{
-	CONTEXT con;
-	::GetThreadContext(static_cast<HANDLE>(handle), &con);
-	return static_cast<System::IntPtr>((long long)con.Eip);
 }
 
 uint32_t SharpUnmanaged::Win32Process::GetModuleSize(System::IntPtr handle, System::IntPtr module)

@@ -10,6 +10,7 @@
 
 #include "Win32Interop.h"
 #include "Win32Thread.h"
+#include "Win32Module.h"
 
 using namespace System;
 using namespace System::Collections::Generic;
@@ -53,13 +54,12 @@ namespace SharpUnmanaged {
 		// Static helpers
 		static void CloseHandle(System::IntPtr handle);
 		static uint32_t GetModuleSize(System::IntPtr handle, System::IntPtr module);
-		static int32_t GetProcessId(System::IntPtr handle);
-		static IntPtr GetThreadInstruction(System::IntPtr handle);
 
 	public:
 		int32_t Id;
 		IntPtr Handle;
 		property IEnumerable<Win32Thread^>^ Threads { IEnumerable<Win32Thread^>^ get(); }
+		property IEnumerable<Win32Module^>^ Modules { IEnumerable<Win32Module^>^ get(); }
 		
 #pragma region Constructors
 
@@ -76,10 +76,16 @@ namespace SharpUnmanaged {
 #pragma endregion
 
 		IntPtr Load(String^ dll);
+		Win32Thread^ Execute(IntPtr address);
+		Win32Thread^ Execute(IntPtr address, IntPtr argument);
 		WaitForType Win32Process::WaitForExit();
 		IntPtr GetModuleHandle(String^ moduleName);
 		IntPtr GetModuleEntry(IntPtr module);
+		IntPtr Alloc(int32_t size, AllocationType allocation, ProtectType protect);
 		bool Free(IntPtr regionAddress);
+
+		void Suspend();
+		void Resume();
 
 #pragma region Memory access
 
@@ -87,12 +93,11 @@ namespace SharpUnmanaged {
 		int32_t WriteBytes(IntPtr address, array<Byte>^ bytes);
 		int32_t WriteString(IntPtr address, String^ value);
 		int32_t ReadInt(IntPtr address);
-		
-		static uint32_t WriteString(System::IntPtr handle, System::IntPtr address, System::String^ value);
-		static uint32_t CopyMemoryRemote(System::IntPtr fromHandle, System::IntPtr address, uint32_t length, System::IntPtr toHandle, System::IntPtr remoteAddress);
 
 #pragma endregion
 
 		static IntPtr GetProcAddress(System::IntPtr module, System::String^ functionName);
+		static uint32_t WriteString(System::IntPtr handle, System::IntPtr address, System::String^ value);
+		static uint32_t CopyMemoryRemote(System::IntPtr fromHandle, System::IntPtr address, uint32_t length, System::IntPtr toHandle, System::IntPtr remoteAddress);
 	};
 }

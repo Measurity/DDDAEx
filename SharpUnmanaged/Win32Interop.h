@@ -43,6 +43,13 @@ namespace SharpUnmanaged {
 		WriteCopy = 0x08,
 	};
 
+	public value struct ModuleInfo
+	{
+		IntPtr BaseAddress;
+		int32_t SizeOfImage;
+		IntPtr EntryPoint;
+	};
+
 	public ref class Win32Interop
 	{
 	public:
@@ -54,5 +61,12 @@ namespace SharpUnmanaged {
 		static IntPtr CreateRemoteThread(IntPtr process, IntPtr entryAddress);
 		static IntPtr GetCurrentProcess();
 		static bool VirtualFreeEx(IntPtr process, IntPtr regionAddress, int32_t size, FreeType freeType);
+		static bool GetThreadTimes(IntPtr handle, [Runtime::InteropServices::Out]DateTime^% creationTime, [Runtime::InteropServices::Out]DateTime^% exitTime, [Runtime::InteropServices::Out]DateTime^% kernelTime, [Runtime::InteropServices::Out]DateTime^% userTime);
+		static int32_t GetProcessId(System::IntPtr handle);
+		static String^ GetModuleFileEx(IntPtr process, IntPtr module);
+		static String^ GetModuleFileEx(IntPtr process, IntPtr module, int32_t size);
+		static ModuleInfo GetModuleInfo(IntPtr process, IntPtr module);
+		static String^ GetModuleName(IntPtr process, IntPtr module);
+		static IntPtr GetProcAddress(IntPtr module, String^ exportedProcName);
 	};
 }
