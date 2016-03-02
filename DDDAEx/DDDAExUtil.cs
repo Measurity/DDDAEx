@@ -3,8 +3,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using ManagedWin;
 using Microsoft.Win32;
+using SharpUnmanaged;
 
 namespace DDDAEx
 {
@@ -26,10 +26,10 @@ namespace DDDAEx
 
         public static string ExePath => Path.Combine(InstallPath, "DDDA.exe");
 
-        public static Tuple<IntPtr, IntPtr> LaunchGame(ProcessCreationType creationType = ProcessCreationType.Default)
+        public static Win32Process LaunchGame(ProcessCreationType creationType = ProcessCreationType.Default)
         {
             if (ExePath == null) return null;
-            return Win32Process.CreateProcess(ExePath, creationType);
+            return Win32Process.Create(ExePath, creationType);
         }
     }
 }
