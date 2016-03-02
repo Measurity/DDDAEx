@@ -59,14 +59,16 @@ namespace SharpUnmanaged {
 		static IntPtr Alloc(IntPtr process, IntPtr address, int size, AllocationType allocation, ProtectType protect);
 		static IntPtr CreateRemoteThread(IntPtr process, IntPtr entryAddress, IntPtr argumentAddress);
 		static IntPtr CreateRemoteThread(IntPtr process, IntPtr entryAddress);
-		static IntPtr GetCurrentProcess();
 		static bool VirtualFreeEx(IntPtr process, IntPtr regionAddress, int32_t size, FreeType freeType);
-		static bool GetThreadTimes(IntPtr handle, [Runtime::InteropServices::Out]DateTime^% creationTime, [Runtime::InteropServices::Out]DateTime^% exitTime, [Runtime::InteropServices::Out]DateTime^% kernelTime, [Runtime::InteropServices::Out]DateTime^% userTime);
+		static bool GetThreadTimes(IntPtr handle, [Runtime::InteropServices::Out]DateTime ^%creationTime, [Runtime::InteropServices::Out]DateTime ^%exitTime, [Runtime::InteropServices::Out]DateTime ^%kernelTime, [Runtime::InteropServices::Out]DateTime ^%userTime);
 		static int32_t GetProcessId(System::IntPtr handle);
 		static String^ GetModuleFileEx(IntPtr process, IntPtr module);
 		static String^ GetModuleFileEx(IntPtr process, IntPtr module, int32_t size);
 		static ModuleInfo GetModuleInfo(IntPtr process, IntPtr module);
 		static String^ GetModuleName(IntPtr process, IntPtr module);
 		static IntPtr GetProcAddress(IntPtr module, String^ exportedProcName);
+		static array<int32_t>^ GetThreads();
+		static array<int32_t>^ GetThreads(int32_t processId);
+		static int32_t GetProcessIdFromThreadId(int32_t threadId);
 	};
 }

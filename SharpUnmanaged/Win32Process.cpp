@@ -9,30 +9,36 @@
 #include "Win32Interop.h"
 
 using namespace System;
+using namespace System::Collections::Generic;
 using namespace SharpUnmanaged;
 
 #pragma region De/Con- structors
 
 Win32Process::Win32Process(int32_t id)
 {
-	Win32Process(id, ProcessAccess::All);
+	if (id <= 0) throw gcnew ArgumentException("Id should be higher than 0.");
+	this->Id = id;
+	this->Handle = static_cast<IntPtr>(::OpenProcess(static_cast<DWORD>(ProcessAccess::All), FALSE, id));
 }
 
 Win32Process::Win32Process(int32_t id, ProcessAccess access)
 {
 	if (id <= 0) throw gcnew ArgumentException("Id should be higher than 0.");
-	Handle = static_cast<IntPtr>(::OpenProcess(static_cast<DWORD>(access), FALSE, id));
+	this->Id = id;
+	this->Handle= static_cast<IntPtr>(::OpenProcess(static_cast<DWORD>(access), FALSE, id));
 }
 
 Win32Process::Win32Process(IntPtr handle)
 {
-	Win32Process(handle, ProcessAccess::All);
+	if (handle == IntPtr::Zero) throw gcnew ArgumentException("Handle should be valid.");
+	this->Id = Win32Interop::GetProcessId(this->Handle);
+	this->Handle = static_cast<IntPtr>(::OpenProcess(static_cast<DWORD>(ProcessAccess::All), FALSE, this->Id));
 }
 
 Win32Process::Win32Process(IntPtr handle, ProcessAccess access)
 {
 	if (handle == IntPtr::Zero) throw gcnew Exception("Could not open the process with all access rights. Make sure you're program is executing with sufficient rights.");
-	Id = ::GetProcessId(static_cast<HANDLE>(handle));
+	Id = Win32Interop::GetProcessId(this->Handle);
 	if (Id <= 0) throw gcnew Exception("Could not get process id from handle.");
 	Handle = handle;
 }
@@ -44,7 +50,7 @@ Win32Process::~Win32Process()
 
 Win32Process^ Win32Process::Current()
 {
-	return gcnew Win32Process(Win32Interop::GetCurrentProcess());
+	return gcnew Win32Process(::GetCurrentProcessId());
 }
 
 Win32Process^ Win32Process::Create(String^ fileName, ProcessCreationType creationType)
@@ -109,21 +115,12 @@ int32_t Win32Process::WriteBytes(System::IntPtr address, array<Byte>^ bytes)
 IEnumerable<Win32Thread^>^ Win32Process::Threads::get()
 {
 	List<Win32Thread^>^ result = gcnew List<Win32Thread^>();
-	HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-	if (h != INVALID_HANDLE_VALUE) {
-		THREADENTRY32 te;
-		te.dwSize = sizeof(te);
-		if (Thread32First(h, &te)) {
-			do {
-				if (te.dwSize >= FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) +
-					sizeof(te.th32OwnerProcessID)) {
-					result->Add(gcnew Win32Thread(te.th32ThreadID));
-				}
-				te.dwSize = sizeof(te);
-			} while (Thread32Next(h, &te));
-		}
-		::CloseHandle(h);
+
+	for each (int32_t thread in Win32Interop::GetThreads(this->Id))
+	{
+		result->Add(gcnew Win32Thread(thread));
 	}
+
 	return result;
 }
 
@@ -134,7 +131,7 @@ IEnumerable<Win32Module^>^ Win32Process::Modules::get()
 	MODULEENTRY32 me32;
 
 	//  Take a snapshot of all modules in the specified process. 
-	hModuleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, this->Id);
+	hModuleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, 0);
 	if (hModuleSnap == INVALID_HANDLE_VALUE)
 	{
 		return result;
@@ -150,7 +147,10 @@ IEnumerable<Win32Module^>^ Win32Process::Modules::get()
 
 	do
 	{
-		result->Add(gcnew Win32Module(this->Handle, static_cast<IntPtr>(me32.hModule)));
+		if (me32.th32ProcessID == this->Id)
+		{
+			result->Add(gcnew Win32Module(this->Handle, static_cast<IntPtr>(me32.hModule)));
+		}
 	} while (Module32Next(hModuleSnap, &me32));
 
 	::CloseHandle(hModuleSnap);

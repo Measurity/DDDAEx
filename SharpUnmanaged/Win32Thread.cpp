@@ -1,26 +1,30 @@
 #include "stdafx.h"
 #include "Win32Interop.h"
 #include "Win32Thread.h"
+#include "Win32Process.h"
 
 using namespace SharpUnmanaged;
+using namespace System::Diagnostics;
 
 Win32Thread::Win32Thread(int32_t threadId)
 {
-	Win32Thread(threadId, ThreadAccess::All);
+	if (threadId <= 0) throw gcnew ArgumentException("ThreadId must not be less or equal to 0.");
+	this->Id = threadId;
+	this->Handle = static_cast<IntPtr>(::OpenThread(static_cast<DWORD>(ThreadAccess::All), FALSE, threadId));
 }
 
 Win32Thread::Win32Thread(int32_t threadId, ThreadAccess access)
 {
 	if (threadId <= 0) throw gcnew ArgumentException("ThreadId must not be less or equal to 0.");
-	Id = threadId;
-	Handle = static_cast<IntPtr>(::OpenThread(static_cast<DWORD>(access), FALSE, threadId));
+	this->Id = threadId;
+	this->Handle = static_cast<IntPtr>(::OpenThread(static_cast<DWORD>(access), FALSE, threadId));
 }
 
 Win32Thread::Win32Thread(IntPtr handle)
 {
 	if (handle == IntPtr::Zero) throw gcnew ArgumentException("Handle must not be 0.");
-	Id = ::GetThreadId(static_cast<HANDLE>(handle));
-	Win32Thread(Id, ThreadAccess::All);
+	this->Id = ::GetThreadId(static_cast<HANDLE>(handle));
+	this->Handle = static_cast<IntPtr>(::OpenThread(static_cast<DWORD>(ThreadAccess::All), FALSE, this->Id));
 }
 
 void Win32Thread::Suspend()
@@ -51,7 +55,7 @@ void Win32Thread::Resume()
 
 void Win32Thread::Resume(int32_t threadId)
 {
-	//if (threadId <= 0) throw gcnew ArgumentException("ThreadId must be bigger than 0.");
+	if (threadId <= 0) throw gcnew ArgumentException("ThreadId must be bigger than 0.");
 	HANDLE handle = ::OpenThread(static_cast<DWORD>(ThreadAccess::SuspendResume), FALSE, threadId);
 	::ResumeThread(handle);
 	::CloseHandle(handle);
@@ -74,11 +78,14 @@ IntPtr Win32Thread::ExitCode::get()
 
 DateTime Win32Thread::Created::get()
 {
-	DateTime^ created = gcnew DateTime();
-	DateTime^ exitTime = gcnew DateTime();
-	DateTime^ kernelTime = gcnew DateTime();
-	DateTime^ userTime = gcnew DateTime();
-	SharpUnmanaged::Win32Interop::GetThreadTimes(Handle, created, exitTime, kernelTime, userTime);
+	
+
+	// TODO: Fix GetThreadTimes to return valid times.
+	DateTime^ created = DateTime();
+	DateTime^ exitTime = DateTime();
+	DateTime^ kernelTime = DateTime();
+	DateTime^ userTime = DateTime();
+	Win32Interop::GetThreadTimes(Handle, created, exitTime, kernelTime, userTime);
 	return *created;
 }
 

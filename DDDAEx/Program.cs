@@ -39,16 +39,17 @@ namespace DDDAEx
             {
                 Debug.WriteLine("Suspending DDDA process..");
                 proc.Suspend();
-                var procMainThread = proc.Threads.OrderBy(t => t.Created).First();
+                var procMainThread = proc.Threads.OrderBy(t => t.Created.Ticks).First();
                 var threadEip = procMainThread.Registers.Eip;
 
-                Debug.WriteLine("Reading main thread bytes..");
+                Debug.Write("Reading main thread bytes..");
                 // Copy first two bytes of thread entry.
                 var threadPStart = proc.ReadBytes(threadEip, 2);
+                Debug.WriteLine(BitConverter.ToString(threadPStart));
 
-                Debug.WriteLine("Writing loop in main thread location..");
+                Debug.Write("Writing loop in main thread location..");
                 // Write infinite loop.
-                proc.WriteBytes(threadEip, new byte[] { 0xEB, 0xFE });
+                Debug.WriteLine($"Wrote {proc.WriteBytes(threadEip, new byte[] { 0xEB, 0xFE })} bytes.");
 
                 Debug.WriteLine("Waiting for DLLs to load..");
                 // Resume and wait for kernel32 to load. Then pause.
@@ -64,9 +65,7 @@ namespace DDDAEx
 
                 Debug.WriteLine("Getting LoadLibraryW offset..");
                 // Get the LoadLibraryW function pointer from kernel32.dll.
-                var loadLibFunc =
-                    proc.Modules.First(m => m.Name.IndexOf("kernel32.dll", StringComparison.OrdinalIgnoreCase) >= 0)
-                        .GetProcAddress("LoadLibraryA");
+                var loadLibFunc = proc.Modules.First(m => m.Name.IndexOf("kernel32.dll", StringComparison.OrdinalIgnoreCase) >= 0).GetProcAddress("LoadLibraryA");
 
                 Debug.WriteLine(
                     $"Writing CLR hoster dll path into process.. loadLibFunc: 0x{loadLibFunc.ToString("X2")}");
@@ -96,6 +95,11 @@ namespace DDDAEx
                     {
                         Debug.WriteLine("Wait for dll to load in target process..");
                         waitResult = loadLibThread.Wait(3 * 1000);
+                        if (waitResult == WaitForType.Failed)
+                        {
+                            MessageBox.Show("Could not wait for LoadLibraryThread to inject dll.", "Injection failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
 
                         targetLibBase = loadLibThread.ExitCode;
                         Debug.WriteLine($"Wait result: {waitResult}");

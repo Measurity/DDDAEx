@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include <vcclr.h>
 #include "Win32Interop.h"
+#include "Win32Process.h"
+#include <tlhelp32.h>
 
 using namespace SharpUnmanaged;
 
@@ -34,26 +36,15 @@ IntPtr Win32Interop::CreateRemoteThread(IntPtr process, IntPtr entryAddress, Int
 	return static_cast<IntPtr>(::CreateRemoteThread(static_cast<HANDLE>(process), NULL, NULL, static_cast<LPTHREAD_START_ROUTINE>(static_cast<LPVOID>(entryAddress)), static_cast<LPVOID>(argumentAddress), NULL, NULL));
 }
 
-IntPtr Win32Interop::GetCurrentProcess()
-{
-	return static_cast<IntPtr>(::GetCurrentProcess());
-}
-
 bool Win32Interop::VirtualFreeEx(IntPtr process, IntPtr regionAddress, int32_t size, FreeType freeType)
 {
 	return ::VirtualFreeEx(static_cast<HANDLE>(process), static_cast<LPVOID>(regionAddress), size, static_cast<DWORD>(freeType)) != NULL;
 }
 
-bool Win32Interop::GetThreadTimes(IntPtr handle, [Runtime::InteropServices::Out]DateTime^% creationTime, [Runtime::InteropServices::Out]DateTime^% exitTime, [Runtime::InteropServices::Out]DateTime^% kernelTime, [Runtime::InteropServices::Out]DateTime^% userTime)
+bool Win32Interop::GetThreadTimes(IntPtr handle, [Runtime::InteropServices::Out]DateTime ^%creationTime, [Runtime::InteropServices::Out]DateTime ^%exitTime, [Runtime::InteropServices::Out]DateTime ^%kernelTime, [Runtime::InteropServices::Out]DateTime ^%userTime)
 {
-	_FILETIME ct, et, kt, ut;
-	BOOL result = ::GetThreadTimes(static_cast<HANDLE>(handle), &ct, &et, &kt, &ut);
-	if (result == FALSE) return false;
+	throw gcnew NotImplementedException();
 
-	creationTime = DateTime::FromFileTime((static_cast<int64_t>(ct.dwHighDateTime) << 32) | ct.dwLowDateTime);
-	exitTime = DateTime::FromFileTime((static_cast<int64_t>(et.dwHighDateTime) << 32) | et.dwLowDateTime);
-	kernelTime = DateTime::FromFileTime((static_cast<int64_t>(kt.dwHighDateTime) << 32) | kt.dwLowDateTime);
-	userTime = DateTime::FromFileTime((static_cast<int64_t>(ut.dwHighDateTime) << 32) | ut.dwLowDateTime);
 	return true;
 }
 
@@ -97,4 +88,98 @@ IntPtr Win32Interop::GetProcAddress(IntPtr module, String^ exportedProcName)
 {
 	IntPtr funcName = System::Runtime::InteropServices::Marshal::StringToHGlobalAnsi(exportedProcName);
 	return static_cast<IntPtr>(::GetProcAddress(static_cast<HMODULE>(static_cast<HANDLE>(module)), (LPCSTR)funcName.ToPointer()));
+}
+
+array<int32_t>^ Win32Interop::GetThreads()
+{
+	System::Collections::Generic::List<int32_t>^ result = gcnew System::Collections::Generic::List<int32_t>();
+
+	HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
+	THREADENTRY32 te32;
+
+	// Take a snapshot of all running threads  
+	hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+	if (hThreadSnap == INVALID_HANDLE_VALUE)
+		return result->ToArray();
+
+	// Fill in the size of the structure before using it. 
+	te32.dwSize = sizeof(THREADENTRY32);
+
+	if (!Thread32First(hThreadSnap, &te32))
+	{
+		::CloseHandle(hThreadSnap);
+		return result->ToArray();
+	}
+	do
+	{
+		result->Add(te32.th32ThreadID);
+	} while (Thread32Next(hThreadSnap, &te32));
+
+	::CloseHandle(hThreadSnap);
+
+	return result->ToArray();
+}
+
+array<int32_t>^ Win32Interop::GetThreads(int32_t processId)
+{
+	System::Collections::Generic::List<int32_t>^ result = gcnew System::Collections::Generic::List<int32_t>();
+
+	HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
+	THREADENTRY32 te32;
+
+	// Take a snapshot of all running threads  
+	hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+	if (hThreadSnap == INVALID_HANDLE_VALUE)
+		return result->ToArray();
+
+	// Fill in the size of the structure before using it. 
+	te32.dwSize = sizeof(THREADENTRY32);
+
+	if (!Thread32First(hThreadSnap, &te32))
+	{
+		::CloseHandle(hThreadSnap);
+		return result->ToArray();
+	}
+	do
+	{
+		if (te32.th32OwnerProcessID == processId)
+		{
+			result->Add(te32.th32ThreadID);
+		}
+	} while (Thread32Next(hThreadSnap, &te32));
+
+	::CloseHandle(hThreadSnap);
+
+	return result->ToArray();
+}
+
+int32_t Win32Interop::GetProcessIdFromThreadId(int32_t threadId)
+{
+	HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
+	THREADENTRY32 te32;
+
+	// Take a snapshot of all running threads  
+	hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+	if (hThreadSnap == INVALID_HANDLE_VALUE)
+		return 0;
+
+	// Fill in the size of the structure before using it. 
+	te32.dwSize = sizeof(THREADENTRY32);
+
+	if (!Thread32First(hThreadSnap, &te32))
+	{
+		::CloseHandle(hThreadSnap);
+		return 0;
+	}
+	do
+	{
+		if (te32.th32ThreadID == threadId)
+		{
+			return te32.th32OwnerProcessID;
+		}
+	} while (Thread32Next(hThreadSnap, &te32));
+
+	::CloseHandle(hThreadSnap);
+
+	return 0;
 }
