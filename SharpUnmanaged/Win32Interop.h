@@ -8,8 +8,16 @@
 #include <comdef.h>
 
 using namespace System;
+using namespace System::Runtime::InteropServices;
 
 namespace SharpUnmanaged {
+	[FlagsAttribute]
+	public enum class DuplicateOptions : uint32_t
+	{
+		CloseSource = 0x00000001,
+		SameAccess = 0x00000002,
+	};
+
 	[FlagsAttribute]
 	public enum class FreeType : uint32_t
 	{
@@ -60,7 +68,12 @@ namespace SharpUnmanaged {
 		static IntPtr CreateRemoteThread(IntPtr process, IntPtr entryAddress, IntPtr argumentAddress);
 		static IntPtr CreateRemoteThread(IntPtr process, IntPtr entryAddress);
 		static bool VirtualFreeEx(IntPtr process, IntPtr regionAddress, int32_t size, FreeType freeType);
-		static bool GetThreadTimes(IntPtr handle, [Runtime::InteropServices::Out]DateTime ^%creationTime, [Runtime::InteropServices::Out]DateTime ^%exitTime, [Runtime::InteropServices::Out]DateTime ^%kernelTime, [Runtime::InteropServices::Out]DateTime ^%userTime);
+		static bool GetThreadTimes(IntPtr handle, 
+			[Out]DateTime creationTime, 
+			[Out]DateTime exitTime, 
+			[Out]DateTime kernelTime, 
+			[Out]DateTime userTime);
+		static IntPtr DuplicateHandle(IntPtr sourceProcess, IntPtr sourceHandle, IntPtr targetProcess, [Out]IntPtr targetHandle);
 		static int32_t GetProcessId(System::IntPtr handle);
 		static String^ GetModuleFileEx(IntPtr process, IntPtr module);
 		static String^ GetModuleFileEx(IntPtr process, IntPtr module, int32_t size);

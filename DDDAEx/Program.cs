@@ -62,8 +62,6 @@ namespace DDDAEx
                 // Resume and wait for kernel32 to load. Then pause.
                 procMainThread.Resume();
                 while (!proc.Modules.Any(m => m.Name.IndexOf("kernel32", StringComparison.OrdinalIgnoreCase) >= 0))
-                    !targetProc.Modules.Cast<ProcessModule>()
-                        .Any(m => m.ModuleName.IndexOf("kernel32", StringComparison.OrdinalIgnoreCase) >= 0))
                     Thread.Sleep(10);
                 procMainThread.Suspend();
 
@@ -75,7 +73,6 @@ namespace DDDAEx
                 Debug.WriteLine("Getting LoadLibraryW offset..");
                 // Get the LoadLibraryW function pointer from kernel32.dll.
                 var loadLibFunc = proc.Modules.First(m => m.Name.IndexOf("kernel32.dll", StringComparison.OrdinalIgnoreCase) >= 0).GetProcAddress("LoadLibraryA");
-                    "LoadLibraryA");
 
                 Debug.WriteLine(
                     $"Writing CLR hoster dll path into process.. loadLibFunc: 0x{loadLibFunc.ToString("X2")}");
@@ -118,7 +115,7 @@ namespace DDDAEx
                 // Wait for the process to initalize a bit..
                 Task.Delay(1000).Wait();
 
-                proc.Execute(remoteExecClrPtr);
+                proc.Execute(IntPtr.Add(targetLibBase, clrFuncOffset.ToInt32()));
             }
         }
 

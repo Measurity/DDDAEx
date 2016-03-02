@@ -78,15 +78,12 @@ IntPtr Win32Thread::ExitCode::get()
 
 DateTime Win32Thread::Created::get()
 {
-	
-
-	// TODO: Fix GetThreadTimes to return valid times.
-	DateTime^ created = DateTime();
-	DateTime^ exitTime = DateTime();
-	DateTime^ kernelTime = DateTime();
-	DateTime^ userTime = DateTime();
+	DateTime created = DateTime();
+	DateTime exitTime = DateTime();
+	DateTime kernelTime = DateTime();
+	DateTime userTime = DateTime();
 	Win32Interop::GetThreadTimes(Handle, created, exitTime, kernelTime, userTime);
-	return *created;
+	return created;
 }
 
 ThreadRegisters Win32Thread::Registers::get()

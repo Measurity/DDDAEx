@@ -5,6 +5,8 @@
 #include <tlhelp32.h>
 
 using namespace SharpUnmanaged;
+using namespace System;
+using namespace System::Runtime::InteropServices;
 
 WaitForType Win32Interop::WaitForSingleObject(IntPtr handle, int32_t ms)
 {
@@ -41,11 +43,17 @@ bool Win32Interop::VirtualFreeEx(IntPtr process, IntPtr regionAddress, int32_t s
 	return ::VirtualFreeEx(static_cast<HANDLE>(process), static_cast<LPVOID>(regionAddress), size, static_cast<DWORD>(freeType)) != NULL;
 }
 
-bool Win32Interop::GetThreadTimes(IntPtr handle, [Runtime::InteropServices::Out]DateTime ^%creationTime, [Runtime::InteropServices::Out]DateTime ^%exitTime, [Runtime::InteropServices::Out]DateTime ^%kernelTime, [Runtime::InteropServices::Out]DateTime ^%userTime)
+bool Win32Interop::GetThreadTimes(IntPtr handle, [Out]DateTime creationTime, [Out]DateTime exitTime, [Out]DateTime kernelTime, [Out]DateTime userTime)
 {
-	throw gcnew NotImplementedException();
+	//::GetThreadTimes()
 
-	return true;
+	return false;
+}
+
+IntPtr Win32Interop::DuplicateHandle(IntPtr sourceProcess, IntPtr sourceHandle, IntPtr targetProcess, [Out]IntPtr targetHandle)
+{
+	::DuplicateHandle(static_cast<HANDLE>(sourceProcess), static_cast<HANDLE>(sourceHandle), static_cast<HANDLE>(targetProcess), static_cast<LPHANDLE>(static_cast<HANDLE>(targetHandle)), 0, FALSE, static_cast<DWORD>(DuplicateOptions::CloseSource | DuplicateOptions::SameAccess));
+	return static_cast<IntPtr>(targetHandle);
 }
 
 int32_t Win32Interop::GetProcessId(IntPtr handle)
