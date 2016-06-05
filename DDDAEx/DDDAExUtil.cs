@@ -18,9 +18,10 @@ namespace DDDAEx
             get
             {
                 if (installPath != null) return installPath;
-                var key = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32).OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App " + SteamGameId);
+                var key = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64).OpenSubKey($@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App {SteamGameId}");
                 installPath = (string) key?.GetValue("InstallLocation");
                 return installPath;
+
             }
         }
 
