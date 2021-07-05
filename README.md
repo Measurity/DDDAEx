@@ -5,7 +5,7 @@ A mod project for Capcom's game - Dragon's Dogma: Dark Arisen
 
 Targets for this project, followed by todo's.
 
-###Injecting
+### Injecting
 **Status**: In progress (Low priority)  
 **Tasks**
 - [x] Use CreateProcess with Suspended to load CLR ASAP.
@@ -23,7 +23,7 @@ Targets for this project, followed by todo's.
 - Wait for process to initialize a bit.
 - CreateRemoteThread on ExecuteCLR function in injected DLL.
 
-###Hooking
+### Hooking
 **Status**: In progress (High priority)  
 **Tasks**  
 - [ ] Inject DirectX's interface and bind it to the SharpDX framework (take a look at EasyHook).
@@ -31,7 +31,7 @@ Targets for this project, followed by todo's.
 
 Keep in mind to allow other mods to easily extend it.
 
-###Extensibility
+### Extensibility
 **Status**: In progress  
 **Tasks**  
 - [ ] Implement MEF2 so mods can be easily made with hot-reload in mind
@@ -42,7 +42,7 @@ Keep in mind to allow other mods to easily extend it.
 Allow .NET dlls to export classes through MEF 2.  
 Classes for: Drawing hooks and Logic hooks.  
 
-###Networking
+### Networking
 **Status**: Todo  
 **Tasks**  
 - [ ] Create a protobuf serialized message system over async server->clients topology.
